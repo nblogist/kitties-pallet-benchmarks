@@ -190,6 +190,18 @@ fn can_transfer() {
         assert_eq!(NFT::tokens(KittiesModule::class_id(), 0).unwrap().owner, 200);
 
         assert_eq!(last_event(), Event::kitties(RawEvent::KittyTransferred(100, 200, 0)));
+
+        // Checking for if the kitty have no price after being transferred
+        assert_ok!(KittiesModule::create(Origin::signed(300))); // kitt_id = 1
+        
+        assert_ok!(KittiesModule::set_price(Origin::signed(300), 1, Some(100)));
+        assert_eq!(last_event(), Event::kitties(RawEvent::KittyPriceUpdated(300, 1, Some(100))));
+
+        assert_ok!(KittiesModule::transfer(Origin::signed(300), 200, 1));
+        // Question: why does transfer removes the entry for the kitty entirely instead of setting it to 0?
+        // Does it have any storage, gas etc benefit? I mean its clear on the storage benefit but is there another
+        // benefit, or did I miss something? 
+        assert_eq!(KittiesModule::kitty_prices(1), None);
     });
 }
 

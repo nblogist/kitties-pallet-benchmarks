@@ -214,9 +214,43 @@ fn handle_self_transfer() {
 #[test]
 fn can_set_price() {
     // TODO: write tests for `fn set_price`
+    new_test_ext().execute_with(|| {
+        // create a kitty_id
+        assert_ok!(KittiesModule::create(Origin::signed(10)));
+        // set a price for kitty
+        assert_ok!(KittiesModule::set_price(Origin::signed(10), 0, Some(100)));
+        assert_eq!(last_event(), Event::kitties(RawEvent::KittyPriceUpdated(10, 0, Some(100))));
+        // check for kitty price to be same as what you assigned in the first place
+        assert_eq!(KittiesModule::kitty_prices(0), Some(100));
+        // Delist kitty
+        assert_ok!(KittiesModule::set_price(Origin::signed(10), 0, Some(0)));
+        assert_eq!(last_event(), Event::kitties(RawEvent::KittyPriceUpdated(10, 0, Some(0))));
+        // Check Kitty's sale status
+        assert_eq!(KittiesModule::kitty_prices(0), Some(0));
+        assert_noop!(KittiesModule::set_price(Origin::signed(100), 0, Some(0)), Error::<Test>::NotOwner);
+        // assert_noop!(KittiesModule::set_price(Origin::signed(10), 12, Some(0)), Error::<Test>::InvalidKittyId); This results in NotOwner Error before realizing that it is also an invalid kitty, so ignoring this test. Would appreciate any feedback here
+    });
 }
 
 #[test]
 fn can_buy() {
     // TODO: write tests for `fn buy`
+    new_test_ext().execute_with(|| {
+        // kitty for sale
+        assert_ok!(KittiesModule::create(Origin::signed(10)));
+        assert_ok!(KittiesModule::set_price(Origin::signed(10), 0, Some(100)));
+        assert_eq!(last_event(), Event::kitties(RawEvent::KittyPriceUpdated(10, 0, Some(100))));
+        
+        // assert_ok!(KittiesModule::buy(Origin::signed(10), 10, 0, 100));
+        assert_noop!(KittiesModule::buy(Origin::signed(10), 10, 0, 100), Error::<Test>::BuyFromSelf);
+        
+        assert_ok!(KittiesModule::create(Origin::signed(10))); // Kitty not for sale
+        assert_noop!(KittiesModule::buy(Origin::signed(200), 10, 1, 100), Error::<Test>::NotForSale); 
+        
+        assert_noop!(KittiesModule::buy(Origin::signed(200), 10, 0, 50), Error::<Test>::PriceTooLow); 
+        
+        assert_ok!(KittiesModule::buy(Origin::signed(200), 10, 0, 100));
+        assert_eq!(last_event(), Event::kitties(RawEvent::KittySold(10, 200, 0, 100)));
+        
+    });
 }
